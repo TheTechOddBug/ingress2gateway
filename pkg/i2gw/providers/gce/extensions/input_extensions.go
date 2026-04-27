@@ -90,3 +90,69 @@ func BuildIRHealthCheckConfig(beConfig *backendconfigv1.BackendConfig) *gce.Heal
 		RequestPath:        beConfig.Spec.HealthCheck.RequestPath,
 	}
 }
+
+func BuildIRCdnConfig(beConfig *backendconfigv1.BackendConfig) *gce.CdnConfig {
+	if beConfig.Spec.Cdn == nil || !beConfig.Spec.Cdn.Enabled {
+		return nil
+	}
+	var bypassHeaders []string
+	for _, h := range beConfig.Spec.Cdn.BypassCacheOnRequestHeaders {
+		if h != nil {
+			bypassHeaders = append(bypassHeaders, h.HeaderName)
+		}
+	}
+
+	var cacheKeyPolicy *gce.CacheKeyPolicy
+	if beConfig.Spec.Cdn.CachePolicy != nil {
+		cacheKeyPolicy = &gce.CacheKeyPolicy{
+			IncludeHost:             boolPtr(beConfig.Spec.Cdn.CachePolicy.IncludeHost),
+			IncludeProtocol:         boolPtr(beConfig.Spec.Cdn.CachePolicy.IncludeProtocol),
+			IncludeQueryString:      boolPtr(beConfig.Spec.Cdn.CachePolicy.IncludeQueryString),
+			ExcludedQueryParameters: beConfig.Spec.Cdn.CachePolicy.QueryStringBlacklist,
+			IncludedQueryParameters: beConfig.Spec.Cdn.CachePolicy.QueryStringWhitelist,
+		}
+	}
+
+	var negativeCachingPolicy []gce.NegativeCachingPolicy
+	for _, p := range beConfig.Spec.Cdn.NegativeCachingPolicy {
+		if p != nil {
+			negativeCachingPolicy = append(negativeCachingPolicy, gce.NegativeCachingPolicy{
+				Code: int(p.Code),
+				TTL:  fmt.Sprintf("%ds", p.Ttl),
+			})
+		}
+	}
+
+	return &gce.CdnConfig{
+		CachePolicy: &gce.CachePolicy{
+			CacheKeyPolicy:                cacheKeyPolicy,
+			CacheMode:                     stringPtrToString(beConfig.Spec.Cdn.CacheMode),
+			DefaultTTL:                    int64PtrToDurationString(beConfig.Spec.Cdn.DefaultTtl),
+			MaxTTL:                        int64PtrToDurationString(beConfig.Spec.Cdn.MaxTtl),
+			ClientTTL:                     int64PtrToDurationString(beConfig.Spec.Cdn.ClientTtl),
+			RequestCoalescing:             beConfig.Spec.Cdn.RequestCoalescing,
+			ServeWhileStale:               int64PtrToDurationString(beConfig.Spec.Cdn.ServeWhileStale),
+			NegativeCaching:               beConfig.Spec.Cdn.NegativeCaching,
+			NegativeCachingPolicy:         negativeCachingPolicy,
+			CacheBypassRequestHeaderNames: bypassHeaders,
+		},
+	}
+}
+
+func stringPtrToString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func int64PtrToDurationString(i *int64) string {
+	if i == nil {
+		return ""
+	}
+	return fmt.Sprintf("%ds", *i)
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
