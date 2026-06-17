@@ -36,7 +36,7 @@ func TestApplyRewriteTargetToEmitterIR_SetsRewriteHeadersAndRegex(t *testing.T) 
 			Namespace: "default",
 			Name:      "ing",
 			Annotations: map[string]string{
-				RewriteTargetAnnotation:    "/rewritten/\\$1",
+				RewriteTargetAnnotation:    "/rewritten/$1",
 				XForwardedPrefixAnnotation: "/prefix",
 				UseRegexAnnotation:         "true",
 			},
@@ -75,8 +75,8 @@ func TestApplyRewriteTargetToEmitterIR_SetsRewriteHeadersAndRegex(t *testing.T) 
 	if got == nil {
 		t.Fatalf("expected PathRewriteByRuleIdx[0] to be set")
 	}
-	if got.ReplaceFullPath != "/rewritten/\\$1" {
-		t.Fatalf("expected ReplaceFullPath=/rewritten/\\$1, got %q", got.ReplaceFullPath)
+	if got.ReplaceFullPath != "/rewritten/$1" {
+		t.Fatalf("expected ReplaceFullPath=/rewritten/$1, got %q", got.ReplaceFullPath)
 	}
 	if got.RegexCaptureGroupReferences != true {
 		t.Fatalf("expected Regex=true, got %v", got.RegexCaptureGroupReferences)

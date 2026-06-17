@@ -18,7 +18,7 @@ package ingressnginx
 
 import (
 	"fmt"
-	"strings"
+	"regexp"
 
 	emitterir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/emitter_intermediate"
 	providerir "github.com/kubernetes-sigs/ingress2gateway/pkg/i2gw/provider_intermediate"
@@ -26,6 +26,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
+
+// captureGroupReferenceRegex matches ingress-nginx rewrite-target capture group
+// references such as "$1", which Gateway API URLRewrite filters cannot express.
+var captureGroupReferenceRegex = regexp.MustCompile(`\$\d`)
 
 // applyRewriteTargetToEmitterIR is a temporary bridge until we decide how rewrite
 // should be integrated into the generic feature parsing flow.
@@ -75,13 +79,13 @@ func applyRewriteTargetToEmitterIR(ingresses []networkingv1.Ingress,
 				pathRewriteIR.Headers["X-Forwarded-Prefix"] = val
 			}
 
-			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
+			if hasRegex && captureGroupReferenceRegex.MatchString(rewriteTarget) {
 				pathRewriteIR.RegexCaptureGroupReferences = true
 			}
 
 			source := fmt.Sprintf("rewrite-target from Ingress %s/%s", ing.Namespace, ing.Name)
 			paths := []*field.Path{field.NewPath("metadata", "annotations", fmt.Sprintf("%q", RewriteTargetAnnotation))}
-			if hasRegex && strings.Contains(rewriteTarget, "\\$") {
+			if hasRegex && captureGroupReferenceRegex.MatchString(rewriteTarget) {
 				// Otherwise, rewrites without capture group references work.
 				pathRewriteIR.RegexCaptureGroupReferences = true
 
